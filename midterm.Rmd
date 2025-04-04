@@ -1,0 +1,413 @@
+---
+title: "STAT 345 Midterm Project"
+font: 12pt
+date: "Due April 4"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+> "Our offense is like the Pythagorean Theorem. There is no answer!", _Shaquille O'Neal_
+
+
+## The Background
+
+Your role for the midterm project is that of data analyst intern at an NBA (professional basketball) team. Your direct supervisor (also part of the analytics team) has asked you to create a data visualization to illustrate how (or if) the team's shots have changed over time. After some initial clarifying questions, your supervisor confessed that they had seen some pretty cool shot charts at http://savvastjortjoglou.com/nba-shot-sharts.html and would like to extend the ideas a bit. 
+
+Your data for the midterm project may come from a variety of sources, including the NBA directly, as well as Basketball-Reference, HoopsHype, and others. There are several ways to access the data, but perhaps the simplest is through the `nbastatR` package, which serves as a wrapper (or set of helper functions) for these various data sources. There is a lot of potentially useful information that can be found using this package; unfortunately, the documentation is somewhat inconsistent. For example, the documentation at https://www.rdocumentation.org/packages/nbastatR/versions/0.1.110202031 is pretty well-formatted and easy to navigate, but the current function names have changed a bit (see `?nbastatR` and click "Index"). (If you use the nbastatR package, you'll want to install the package using the following code. There are other packages with this type of data, though.) You are welcome to scrape other websites or use other packages if you choose.
+
+```{r}
+library(devtools)
+devtools::install_github("abresler/nbastatR")
+```
+
+## The Tasks
+
+1. (30 points) Produce a graphic displaying the shot locations for a particular team over several years. Some notes:
+
+   - Colors should be chosen to reflect the team, if possible.
+   - There are likely many overlaid points -- handle this by either binning these by location, or use opacity. 
+   - Incorporate information about whether the shot was made or not (shape, color, etc.). 
+   - The graphic should be well-labeled, titled, etc.
+   - Start with a graph for a single year, then extend to several years. Up to 20 years of shot data is available. Either facet these by year or animate using the years. 
+   - You'll want to figure out what the coordinates mean somehow. This might be through the documentation, but could also be determined using aspects of the data itself and the dimensions of an NBA court.
+    - Put a basketball court on the background of the image (you'll need to scale it appropriately).
+
+```{r}
+#Had to make the connection size bigger to solve error problems due to how big the data getting read in is.
+Sys.setenv("VROOM_CONNECTION_SIZE" = 500000)
+library(nbastatR)
+library(future)
+
+#Obtain the shot chart from the Celtics for the past 16 years. I am doing this because 2008 was the last time they won a NBA Finals before this past year. (plus 20 was a tad much to view at once)
+shot_chart24 = teams_shots(teams="Boston Celtics", seasons=2024)
+shot_chart23 = teams_shots(teams="Boston Celtics", seasons=2023)
+shot_chart22 = teams_shots(teams="Boston Celtics", seasons=2022)
+shot_chart21 = teams_shots(teams="Boston Celtics", seasons=2021)
+shot_chart20 = teams_shots(teams="Boston Celtics", seasons=2020)
+shot_chart19 = teams_shots(teams="Boston Celtics", seasons=2019)
+shot_chart18 = teams_shots(teams="Boston Celtics", seasons=2018)
+shot_chart17 = teams_shots(teams="Boston Celtics", seasons=2017)
+shot_chart16 = teams_shots(teams="Boston Celtics", seasons=2016)
+shot_chart15 = teams_shots(teams="Boston Celtics", seasons=2015)
+shot_chart14 = teams_shots(teams="Boston Celtics", seasons=2014)
+shot_chart13 = teams_shots(teams="Boston Celtics", seasons=2013)
+shot_chart12 = teams_shots(teams="Boston Celtics", seasons=2012)
+shot_chart11 = teams_shots(teams="Boston Celtics", seasons=2011)
+shot_chart10 = teams_shots(teams="Boston Celtics", seasons=2010)
+shot_chart9 = teams_shots(teams="Boston Celtics", seasons=2009)
+shot_chart8 = teams_shots(teams="Boston Celtics", seasons=2008)
+```
+
+```{r}
+library(tidyverse)
+#Get the locations from shot_chart to fit on the half court
+shot_chart_8 = shot_chart8 %>% filter(locationY<=475)
+shot_chart_9 = shot_chart9 %>% filter(locationY<=475)
+shot_chart_10 = shot_chart10 %>% filter(locationY<=475)
+shot_chart_11 = shot_chart11 %>% filter(locationY<=475)
+shot_chart_12 = shot_chart12 %>% filter(locationY<=475)
+shot_chart_13 = shot_chart13 %>% filter(locationY<=475)
+shot_chart_14 = shot_chart14 %>% filter(locationY<=475)
+shot_chart_15 = shot_chart15 %>% filter(locationY<=475)
+shot_chart_16 = shot_chart16 %>% filter(locationY<=475)
+shot_chart_17 = shot_chart17 %>% filter(locationY<=475)
+shot_chart_18 = shot_chart18 %>% filter(locationY<=475)
+shot_chart_19 = shot_chart19 %>% filter(locationY<=475)
+shot_chart_20 = shot_chart20 %>% filter(locationY<=475)
+shot_chart_21 = shot_chart21 %>% filter(locationY<=475)
+shot_chart_22 = shot_chart22 %>% filter(locationY<=475)
+shot_chart_23 = shot_chart23 %>% filter(locationY<=475)
+shot_chart_24 = shot_chart24 %>% filter(locationY<=475)
+```
+
+
+```{r}
+#combining 16 years of shot charts using the bind_rows function
+all_shots = bind_rows(list(shot_chart_8, shot_chart_9, shot_chart_10, shot_chart_11, shot_chart_12, shot_chart_13, shot_chart_14, shot_chart_15, shot_chart_16, shot_chart_17, shot_chart_18, shot_chart_19, shot_chart_20, shot_chart_21, shot_chart_22, shot_chart_23, shot_chart_24), .id = NULL)
+
+```
+
+
+
+```{r, fig.height=10, fig.width=10}
+
+#creating the shot chart with the half court of a basketball court
+
+#reading in the libraries needed
+library(tidyverse)
+library(ggplot2)
+library(ggforce)
+library(hexbin)
+
+#data frame to create outline of court
+court = data.frame(x = c(-250, -250, 250, 250,-250), y = c(475,-40,-40,475,475))
+
+ggplot(all_shots, aes(x = locationX, y = locationY)) +
+  
+#creating points and using color to determine if shot was made using .5 opaqueness and decreased size, using Celtics colors(green for makes, grey for misses)
+geom_point(aes(color = factor(isShotMade)),alpha=0.5, size=.75) +
+scale_color_manual(values = c("FALSE" = "grey", "TRUE" = "forestgreen"), labels = c("Missed", "Made"))+
+  
+#court elements  
+#hoop
+geom_circle(aes(x0 = 0, y0 = 7.5, r = 7.5), color = "darkorange") +
+#half court outline
+geom_path(data = court, aes(x, y), color = "black") +
+#inner paint rectangle
+annotate("rect", xmin = -80, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#outer paint lines 
+annotate("rect", xmin = -100, xmax = -80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+annotate("rect", xmin = 100, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#free throw circle
+annotate("path", x = 80 * cos(seq(0, pi, length.out = 100)), y = 160 + 80 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#restricted area
+annotate("path", x = 60 * cos(seq(0, pi, length.out = 100)), y = 60 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#half court circle
+annotate("path", x = -60 * cos(seq(0, pi, length.out = 100)), y = 475-60 * sin(seq(0, pi, length.out = 100)), color = "black") +  
+#three point line
+annotate("path", x = 220 * cos(seq(0, pi, length.out = 100)), y = 20 + 220 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#backboard
+annotate("segment",x=-30, xend=30, y=0, yend=0, color = "black")+
+#three point corners
+annotate("segment",x=-220, xend=-220, y=-40, yend=40, color = "black")+
+annotate("segment",x=220, xend=220, y=-40, yend=40, color = "black")+
+  
+#this centers everything putting x location in the center instead of in the corner
+coord_fixed()+
+  
+#title of charts
+ggtitle("Boston Celtics Shot Chart (Last 16 Years)") +
+  
+#getting each seasons' shot charts for the past 16 years
+facet_wrap(~yearSeason) +
+  
+# Label modifications
+labs(x = "Shot Distance from Center of Court", y = "Shot Distance from Baseline", color = "Shot Outcome") +
+  
+#just a simple theme, nothing fancy needed
+theme_minimal()
+```
+
+
+
+
+   
+2. (30 points) Summarize the graphic/series of graphics into a digestible, bullet-point brief report for front-office staff. Some notes:
+
+   - The main body of the report should be very brief -- just the graphic(s) and the bullet-pointed list of findings, which should be short and clear.
+   - Include a more detailed explanation of these bullet points, for further reading by those interested. This section should follow the bullet-point section, but should be organized similarly for reference. 
+   - Your report to the front-office shouldn't include any code.
+   - This report should be generated using RMarkdown. However, the choice of output type (Word, PDF, or HTML) is up to you (you could even make slides if you want to). 
+
+
+
+
+
+3. (30 points) Write and document clean, efficient, reproducible code. Some notes:
+
+   - This code will be viewed by your direct supervisor.
+   - The code file should include your code to gather, join, and clean the data; the code to generate the graphic(s) presented; and your commentary on the results (so, a single .rmd file, or an .rmd file that sources an .r file).
+   - Your code should be clean, organized, and reproducible. Remove unnecessary/scratch/exploratory code.
+   - Your code should be well commented. In particular, any decisions or judgement calls made in the analysis process should be explained/justified. Sections of code should be identified even if not functionalized (including purpose, data/argument inputs, analysis outputs).
+   
+4. (10 points) Above and Beyond. Choose either option below. You are welcome to explore both, but only one is required. 
+
+  - Option 1: Explore the data a bit, and create a graphic that uses (or incorporates) different information than what was used above. Some notes:
+    - Create an additional graphic that incorporates at least one additional variable not previously used (this should add to the graphic in part 1). The additional data should be drawn from a different dataset (function call) than the original graphic used. These two (or more) datasets may need to be joined appropriately.
+    - You can either add more information to the plot above, or create a different plot. 
+     - Formatting, labelling, etc. are all important here too.
+    - Adding marginal densities or other "bells and whistles" might offer additional insight.
+    - This graphic should be included at the end of the report (after the more detailed explanations). 
+     - You should include a brief description of the graphic (highlighting the different/additional information used).
+     
+```{r}
+library(dplyr)
+
+#changing the typeShot column to be a double for whether the shot was a 2 or 3
+shot_chart_8 = shot_chart_8 %>% mutate(typeShot = case_when(typeShot == "2PT Field Goal" ~ 2, typeShot == "3PT Field Goal" ~ 3))
+shot_chart_24 = shot_chart_24 %>% mutate(typeShot = case_when(typeShot == "2PT Field Goal" ~ 2, typeShot == "3PT Field Goal" ~ 3))
+
+#combining typeShot and isShotMade to create a new column to show how many points each shot earned
+shot_chart_8 = shot_chart_8 %>% mutate(pointsEarned = typeShot * isShotMade)
+shot_chart_24 = shot_chart_24 %>% mutate(pointsEarned = typeShot * isShotMade)
+
+```
+
+     
+```{r, fig.width = 9, fig.height = 9}
+library(ggplot2)
+library(ggExtra)
+
+# Base plot for 2008
+marg_shot_chart8 = ggplot(shot_chart_8, aes(x = locationX, y = locationY)) +
+  
+#add in the points scaled to optimal size and opacity
+geom_point(aes(color = factor(pointsEarned)),alpha = 0.5, size = 1)+
+
+#different color based on the point value
+scale_color_manual(values = c("0" = "darkgrey", "2" = "blue", "3" = "forestgreen"), labels = c("Missed","Made 2 PT", "Made 3 PT")) +  
+
+#court elements
+#hoop
+geom_circle(aes(x0 = 0, y0 = 7.5, r = 7.5), color = "darkorange") +
+#half court outline
+geom_path(data = court, aes(x, y), color = "black") +
+#inner paint rectangle
+annotate("rect", xmin = -80, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#outer paint lines 
+annotate("rect", xmin = -100, xmax = -80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+annotate("rect", xmin = 100, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#free throw circle
+annotate("path", x = 80 * cos(seq(0, pi, length.out = 100)), y = 160 + 80 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#restricted area
+annotate("path", x = 60 * cos(seq(0, pi, length.out = 100)), y = 60 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#half court circle
+annotate("path", x = -60 * cos(seq(0, pi, length.out = 100)), y = 475-60 * sin(seq(0, pi, length.out = 100)), color = "black") +  
+#three point line
+annotate("path", x = 220 * cos(seq(0, pi, length.out = 100)), y = 20 + 220 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#backboard
+annotate("segment",x=-30, xend=30, y=0, yend=0, color = "black")+
+#three point corners
+annotate("segment",x=-220, xend=-220, y=-40, yend=40, color = "black")+
+annotate("segment",x=220, xend=220, y=-40, yend=40, color = "black")+
+  
+#this centers everything putting x location in the center instead of in the corner
+coord_fixed()+
+
+# Label modifications
+labs(x = "Shot Distance from Center of Court", y = "Shot Distance from Baseline", color = "Shot Outcome") +
+  
+ggtitle("Shot Density Charts Based on Points Earned (2008)") +
+theme_minimal()
+
+# Add marginal densities
+ggMarginal(marg_shot_chart8, type = "density", groupFill = TRUE)
+
+
+# Base plot for 2024
+marg_shot_chart24 = ggplot(shot_chart_24, aes(x = locationX, y = locationY)) +
+  
+#add in the points scaled to optimal size and opacity
+geom_point(aes(color = factor(pointsEarned)),alpha = 0.5, size = 1)+
+
+#different color based on the point value
+scale_color_manual(values = c("0" = "darkgrey", "2" = "blue", "3" = "forestgreen"), labels = c("Missed","Made 2 PT", "Made 3 PT")) +  
+
+#court elements
+#hoop
+geom_circle(aes(x0 = 0, y0 = 7.5, r = 7.5), color = "darkorange") +
+#half court outline
+geom_path(data = court, aes(x, y), color = "black") +
+#inner paint rectangle
+annotate("rect", xmin = -80, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#outer paint lines 
+annotate("rect", xmin = -100, xmax = -80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+annotate("rect", xmin = 100, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#free throw circle
+annotate("path", x = 80 * cos(seq(0, pi, length.out = 100)), y = 160 + 80 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#restricted area
+annotate("path", x = 60 * cos(seq(0, pi, length.out = 100)), y = 60 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#half court circle
+annotate("path", x = -60 * cos(seq(0, pi, length.out = 100)), y = 475-60 * sin(seq(0, pi, length.out = 100)), color = "black") +  
+#three point line
+annotate("path", x = 220 * cos(seq(0, pi, length.out = 100)), y = 20 + 220 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#backboard
+annotate("segment",x=-30, xend=30, y=0, yend=0, color = "black")+
+#three point corners
+annotate("segment",x=-220, xend=-220, y=-40, yend=40, color = "black")+
+annotate("segment",x=220, xend=220, y=-40, yend=40, color = "black")+
+  
+#this centers everything putting x location in the center instead of in the corner
+coord_fixed()+
+
+# Label modifications
+labs(x = "Shot Distance from Center of Court", y = "Shot Distance from Baseline", color = "Shot Outcome") +
+  
+ggtitle("Shot Density Charts Based on Points Earned (2024)") +
+theme_minimal()
+
+# Add marginal densities
+ggMarginal(marg_shot_chart24, type = "density", groupFill = TRUE)
+
+```
+
+- You should include a brief description of the graphic (highlighting the different/additional information used).
+
+This graphic includes two graphs, both of which were the last two years the Celtics won the NBA Finals. In these graphs I had the varying colors of the points determine how many points each shot earned. grey being zero, blue being two, and green being three. I had to go blue because the Celtics don't really have much for secondary colors. To do this I had to take a column called shotType which was a character that said either "2PT Field Goal" or "3PT Field Goal", and turn it into a numeric value of 2 or 3s. This still didn't incorporate whether the shot was made or missed, So I Created a new column called "pointsEarned" which took the altered shotType column and multiplied it with the isShotMade column which is either TRUE (1) or FALSE (0) to get the points earned for each shot taken. Then I decided it would be a good idea to add some marginal densities to the graph as well. Originally I had just one density for the amount of shots taken at each spot, but I decided to incorporate the pointsEarned into the densities as well, showing the densities of shots missed, made 3s, and made 2s. Doing all this created the graphics I have above. 
+
+
+     
+```{r}
+#get total number of shots for the code below to compute it into a % for each spot on the court
+total_shots24 = nrow(shot_chart_24)
+total_shots8 = nrow(shot_chart_8)
+```
+
+```{r,fig.width = 9, fig.height = 9}
+#plot for 2008
+ggplot(shot_chart_8, aes(x = locationX, y = locationY)) +
+  
+#Gives you a hexagonal "heat map" of where they're taking most of their shots by percentage.
+geom_hex(bins = 15, aes(fill = after_stat(count/total_shots8*100))) +
+
+#get the teams colors to fill along with the label for the key
+scale_fill_gradient(low = "white", high = "forestgreen", name = "shot %") +
+  
+#court elements  
+#hoop
+geom_circle(aes(x0 = 0, y0 = 7.5, r = 7.5), color = "darkorange") +
+#half court outline
+geom_path(data = court, aes(x, y), color = "black") +
+#inner paint rectangle
+annotate("rect", xmin = -80, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#outer paint lines 
+annotate("rect", xmin = -100, xmax = -80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+annotate("rect", xmin = 100, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#free throw circle
+annotate("path", x = 80 * cos(seq(0, pi, length.out = 100)), y = 160 + 80 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#restricted area
+annotate("path", x = 60 * cos(seq(0, pi, length.out = 100)), y = 60 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#half court circle
+annotate("path", x = -60 * cos(seq(0, pi, length.out = 100)), y = 475-60 * sin(seq(0, pi, length.out = 100)), color = "black") +  
+#three point line
+annotate("path", x = 220 * cos(seq(0, pi, length.out = 100)), y = 20 + 220 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#backboard
+annotate("segment",x=-30, xend=30, y=0, yend=0, color = "black")+
+#three point corners
+annotate("segment",x=-220, xend=-220, y=-40, yend=40, color = "black")+
+annotate("segment",x=220, xend=220, y=-40, yend=40, color = "black")+
+  
+#this centers everything putting x location in the center instead of in the corner
+coord_fixed()+
+
+#title
+ggtitle("Shot Density Chart (2008)") +
+theme_minimal()
+
+
+
+#plot for 2024
+ggplot(shot_chart_24, aes(x = locationX, y = locationY)) +
+  
+#Gives you a hexagonal "heat map" of where they're taking most of their shots by percentage.
+geom_hex(bins = 15, aes(fill = after_stat(count/total_shots24*100))) +
+
+#get the teams colors to fill along with the label for the key
+scale_fill_gradient(low = "white", high = "forestgreen", name = "shot %") +
+
+#court elements 
+#hoop
+geom_circle(aes(x0 = 0, y0 = 7.5, r = 7.5), color = "darkorange") +
+#half court outline
+geom_path(data = court, aes(x, y), color = "black") +
+#inner paint rectangle
+annotate("rect", xmin = -80, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#outer paint lines 
+annotate("rect", xmin = -100, xmax = -80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+annotate("rect", xmin = 100, xmax = 80, ymin = -40, ymax = 160, color = "black", fill = NA)+
+#free throw circle
+annotate("path", x = 80 * cos(seq(0, pi, length.out = 100)), y = 160 + 80 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#restricted area
+annotate("path", x = 60 * cos(seq(0, pi, length.out = 100)), y = 60 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#half court circle
+annotate("path", x = -60 * cos(seq(0, pi, length.out = 100)), y = 475-60 * sin(seq(0, pi, length.out = 100)), color = "black") +  
+#three point line
+annotate("path", x = 220 * cos(seq(0, pi, length.out = 100)), y = 20 + 220 * sin(seq(0, pi, length.out = 100)), color = "black") +
+#backboard
+annotate("segment",x=-30, xend=30, y=0, yend=0, color = "black")+
+#three point corners
+annotate("segment",x=-220, xend=-220, y=-40, yend=40, color = "black")+
+annotate("segment",x=220, xend=220, y=-40, yend=40, color = "black")+
+  
+#this centers everything putting x location in the center instead of in the corner
+coord_fixed()+
+  
+#title 
+ggtitle("Shot Density Chart (2024)") +
+theme_minimal()
+```
+- You should include a brief description of the graphic (highlighting the different/additional information used).
+
+For this graphic I wanted to see the density of shots for the same two years as above. But, instead of like above, I wanted to be able to see it easier by actually being on the court. to do this I changed the geom_point to geom_hex and decided on a binwidth of 15 to fit the court optimally. With that in place it had a count as the legend, which I thought makes it kind of hard to think about. So, I decided to change it to show the proportion of shots compared to the total taken in each area. to do this I totaled up the shots for both seasons and took the count of each spot divided by the total on the season and multiplied it by 100 to get the percentages. To adjust this I used the gradient from white being low, to forest green being high percentage. With both of these graphics visible I think it makes it significantly easier for the reader to  understand than otherwise just looking at one or the other. 
+
+     
+Analysis From Above and Beyond:
+
+The graphic from 2008 shows that the majority of shots were taken right at the rim. It also shows that there were more missed shots than made around a distance of 4-5 feet from the rim. So, even when just a little further out from the rim, the shot % dramatically declines. The midrange 2s based on the densities and shot chart are pretty spread out for the most part. In terms of 3s, it seems that most shots are made at or near the top of the key, with a tiny bump in the corners. This suggests that for the most part they had players who liked to shoot it right at the rim, with a possible playmaker that used pick and roll on the top to explain the more amount of threes up top. It is likely they had a reliable shooters that they trusted from the corner as well. It is likely the playmaker took the pick-and-roll off the elite inside scorer and then either passed it off to the roller for an easy at the rim shot, kicked it out to the corner when that players defender crashed, or shot it when they switched at the pick-and-roll. 
+
+The graphic from 2024 shows that they mostly relied on the success either within 5 feet of the basket or 3s from the top of the key to wing, and significantly in the corners as well. between the wing and corner at the 3, however, there doesn't seem to be many shots taken. There also is a small case of more missed shots than made around the elbows, but also a much smaller amount of mid to deep 2s taken when compared to the 2008 season. There is a heavy focus, although not as narrow as the 2008 to the inside. they still seemed to have success when shooting from 4-5 feet and in fact have more similar densities all within 4-5 feet. The lack of midrange shots could be due to the gameplan, since historically they aren't the most efficient shots in the game, or also due to an increase of athleticism, allowing players to get by their defenders and inside easier. Because of this, likely off-ball defenders crashed to help the on-ball defender keep the offense out of the paint, which allowed for easy kicks to the corner and wings based on where they're driving from. Also, due to the large amounts of 3s taken at the top of the key to wing area, it is likely that there is either more zone defense being played or more switching off the pick-and-roll. This suggests that the players on the court are becoming able to guard most positions, and the game is becoming more positionless. 
+
+
+  
+## The Deliverables
+
+1. Upload your report and code file(s) to GitHub by 11:00am on Friday, April 4.
+2. Submit (on Canvas) your report, code, and link to your GitHub repository by 11:00am on Friday, April 4.
+  
+  
+  
+  
+
+
